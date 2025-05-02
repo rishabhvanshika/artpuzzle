@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Art Puzzle Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .game-container {
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .theme-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .theme-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .theme-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.7));
+            z-index: 1;
+        }
+        
+        .theme-card-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .game-mode-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .game-mode-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0) 45%,
+                rgba(255, 255, 255, 0.3) 50%,
+                rgba(255, 255, 255, 0) 55%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+        
+        @keyframes shine {
+            0% { left: -50%; }
+            100% { left: 150%; }
+        }
+        
+        .puzzle-tile {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .puzzle-tile:hover {
+            transform: scale(1.03);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        
+        .spot-diff-container img {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .difference-spot {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 59, 48, 0.6);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .difference-spot::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60%;
+            height: 60%;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .hidden-object {
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            background-color: rgba(46, 204, 113, 0.3);
+            border: 2px dashed rgba(46, 204, 113, 0.8);
+            transform: translate(-50%, -50%);
+        }
+        
+        .hidden-object:hover {
+            background-color: rgba(46, 204, 113, 0.5);
+        }
+        
+        .hidden-object-found {
+            background-color: rgba(46, 204, 113, 0.7) !important;
+            border: 2px solid rgba(46, 204, 113, 1);
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #f00;
+            animation: confetti-fall 5s ease forwards;
+            opacity: 0.8;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100px) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(1000px) rotate(720deg) scale(0.5);
+                opacity: 0;
+            }
+        }
+        
+        .tile-grid {
+            display: grid;
+            gap: 5px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .progress-ring {
+            position: relative;
+            width: 60px;
+            height: 60px;
+        }
+        
+        .progress-ring-circle {
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 0.3s;
+        }
+        
+        .hint-box {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+        }
+        
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .theme-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .theme-card:hover .theme-image {
+            transform: scale(1.1);
+        }
+        
+        .game-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .object-item {
+            transition: all 0.3s ease;
+        }
+        
+        .object-item:hover {
+            transform: scale(1.05);
+            background-color: rgba(59, 130, 246, 0.5) !important;
+        }
+        
+        .object-item-found {
+            background-color: rgba(34, 197, 94, 0.7) !important;
+        }
+    </style>
+</head>
+<body class="text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Game Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-bold mb-4 animate-pulse">🎨🧩 AI Art Puzzle</h1>
+            <p class="text-xl max-w-2xl mx-auto">Think you've got an eye for detail? Step into a world of beautiful, bizarre, and brain-twisting puzzles — all powered by cutting-edge AI art.</p>
+        </header>
+
+        <!-- Main Game Container -->
+        <div id="main-container" class="game-container rounded-xl p-8 max-w-6xl mx-auto">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="text-center py-10">
+                <div class="floating mb-8">
+                    <svg width="200" height="200" viewBox="0 0 200 200" class="mx-auto">
+                        <path fill="#6D28D9" d="M44.5,-59.9C56.9,-52.1,65.6,-37.1,71.3,-20.2C77,-3.3,79.7,15.5,72.9,30.3C66.1,45.1,49.8,55.9,32.3,63.8C14.8,71.7,-3.9,76.7,-20.1,71.3C-36.3,65.9,-50.1,50.1,-59.1,32.2C-68.1,14.3,-72.3,-5.7,-67.1,-22.9C-61.9,-40.1,-47.3,-54.5,-31.5,-61.3C-15.7,-68.1,1.3,-67.3,18.2,-62.3C35.1,-57.3,52,-48.1,44.5,-59.9Z" transform="translate(100 100)" />
+                        <image href="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=200&q=80" x="50" y="50" width="100" height="100" clip-path="url(#clipPath)" />
+                        <clipPath id="clipPath">
+                            <path d="M44.5,-59.9C56.9,-52.1,65.6,-37.1,71.3,-20.2C77,-3.3,79.7,15.5,72.9,30.3C66.1,45.1,49.8,55.9,32.3,63.8C14.8,71.7,-3.9,76.7,-20.1,71.3C-36.3,65.9,-50.1,50.1,-59.1,32.2C-68.1,14.3,-72.3,-5.7,-67.1,-22.9C-61.9,-40.1,-47.3,-54.5,-31.5,-61.3C-15.7,-68.1,1.3,-67.3,18.2,-62.3C35.1,-57.3,52,-48.1,44.5,-59.9Z" transform="translate(100 100)" />
+                        </clipPath>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-6">Welcome to AI Art Puzzle!</h2>
+                <p class="mb-8 text-lg">Choose a theme, test your puzzle-solving skills, and discover new AI creations every time you play!</p>
+                <button id="start-btn" class="btn-primary px-8 py-3 rounded-full text-xl font-bold">
+                    Start Playing
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+
+            <!-- Theme Selection -->
+            <div id="theme-selection" class="hidden">
+                <h2 class="text-3xl font-bold mb-8 text-center">Choose a Theme</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="theme-card rounded-xl overflow-hidden shadow-lg h-96" data-theme="fantasy">
+                        <img src="https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="theme-image">
+                        <div class="theme-card-content absolute bottom-0 left-0 right-0 p-6">
+                            <h3 class="text-2xl font-bold mb-2">Fantasy</h3>
+                            <p>Dragons, castles, and magical landscapes created by AI</p>
+                        </div>
+                    </div>
+                    
+                    <div class="theme-card rounded-xl overflow-hidden shadow-lg h-96" data-theme="scifi">
+                        <img src="https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="theme-image">
+                        <div class="theme-card-content absolute bottom-0 left-0 right-0 p-6">
+                            <h3 class="text-2xl font-bold mb-2">Sci-Fi</h3>
+                            <p>Futuristic cities, robots, and space scenes imagined by AI</p>
+                        </div>
+                    </div>
+                    
+                    <div class="theme-card rounded-xl overflow-hidden shadow-lg h-96" data-theme="food">
+                        <img src="https://images.unsplash.com/photo-1544025162-d76694265947?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="theme-image">
+                        <div class="theme-card-content absolute bottom-0 left-0 right-0 p-6">
+                            <h3 class="text-2xl font-bold mb-2">Food</h3>
+                            <p>Mouthwatering dishes and culinary creations generated by AI</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Mode Selection -->
+            <div id="game-mode-selection" class="hidden">
+                <h2 class="text-3xl font-bold mb-2 text-center">Choose a Game Mode</h2>
+                <p id="theme-display" class="text-xl mb-8 text-center">Theme: <span id="selected-theme" class="font-semibold"></span></p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="game-mode-card bg-green-900 bg-opacity-50 rounded-xl overflow-hidden shadow-lg" data-mode="spot-difference">
+                        <div class="h-40 bg-green-800 flex items-center justify-center relative overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="absolute w-full h-full object-cover opacity-70">
+                            <i class="fas fa-search text-5xl relative z-10"></i>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-2xl font-bold mb-2">Spot the Difference</h3>
+                            <p>Find the subtle differences between two similar AI artworks</p>
+                        </div>
+                    </div>
+                    
+                    <div class="game-mode-card bg-yellow-900 bg-opacity-50 rounded-xl overflow-hidden shadow-lg" data-mode="tile-puzzle">
+                        <div class="h-40 bg-yellow-800 flex items-center justify-center relative overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1635070040809-4a1030d5b6d6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="absolute w-full h-full object-cover opacity-70">
+                            <i class="fas fa-puzzle-piece text-5xl relative z-10"></i>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-2xl font-bold mb-2">Tile Puzzle</h3>
+                            <p>Rearrange scrambled tiles to complete the AI artwork</p>
+                        </div>
+                    </div>
+                    
+                    <div class="game-mode-card bg-pink-900 bg-opacity-50 rounded-xl overflow-hidden shadow-lg" data-mode="hidden-object">
+                        <div class="h-40 bg-pink-800 flex items-center justify-center relative overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1639762681406-56a7d7c1c0ea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="absolute w-full h-full object-cover opacity-70">
+                            <i class="fas fa-eye text-5xl relative z-10"></i>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-2xl font-bold mb-2">Hidden Objects</h3>
+                            <p>Find all hidden objects in an intricate AI-generated scene</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Screen - Spot the Difference -->
+            <div id="spot-difference-game" class="game-screen hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Spot the Difference</h2>
+                    <div class="flex space-x-4 items-center">
+                        <div class="progress-ring">
+                            <svg height="60" width="60">
+                                <circle class="progress-ring-circle" stroke="#6D28D9" stroke-width="4" fill="transparent" r="26" cx="30" cy="30" 
+                                stroke-dasharray="163.36" stroke-dashoffset="0"></circle>
+                                <text x="50%" y="50%" text-anchor="middle" stroke="#fff" stroke-width="1px" dy=".3em" font-size="14" font-weight="bold">
+                                    <tspan x="30" y="30" fill="#fff" id="found-differences">0</tspan>
+                                    <tspan x="30" y="45" fill="#aaa" font-size="10">/5</tspan>
+                                </text>
+                            </svg>
+                        </div>
+                        <button id="spot-diff-hint" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-lightbulb mr-2"></i> Hint
+                        </button>
+                    </div>
+                </div>
+                <div class="spot-diff-container grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                    <div id="image-left" class="relative rounded-lg overflow-hidden h-96">
+                        <img src="https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="game-image">
+                    </div>
+                    <div id="image-right" class="relative rounded-lg overflow-hidden h-96">
+                        <img src="https://images.unsplash.com/photo-1639762681406-56a7d7c1c0ea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="game-image">
+                    </div>
+                </div>
+                <div id="hint-box" class="mt-6 bg-yellow-900 bg-opacity-50 p-4 rounded-lg hidden hint-box">
+                    <div class="flex items-start">
+                        <i class="fas fa-lightbulb text-yellow-300 text-2xl mr-3 mt-1"></i>
+                        <p id="hint-text" class="text-lg"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Screen - Tile Puzzle -->
+            <div id="tile-puzzle-game" class="game-screen hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Tile Puzzle</h2>
+                    <div class="flex space-x-4 items-center">
+                        <div class="bg-purple-900 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-arrows-alt mr-2"></i>
+                            <span id="moves-counter">0</span>
+                        </div>
+                        <button id="tile-puzzle-hint" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-eye mr-2"></i> Show Reference
+                        </button>
+                    </div>
+                </div>
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div id="tile-grid" class="tile-grid w-full md:w-2/3 h-96 bg-gray-800">
+                        <!-- Tiles will be generated here -->
+                    </div>
+                    <div id="reference-image" class="hidden md:block w-1/3 h-96 bg-gray-700 rounded-lg overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1635070040809-4a1030d5b6d6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="game-image">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Screen - Hidden Objects -->
+            <div id="hidden-object-game" class="game-screen hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Hidden Objects</h2>
+                    <div class="flex space-x-4 items-center">
+                        <div class="progress-ring">
+                            <svg height="60" width="60">
+                                <circle class="progress-ring-circle" stroke="#6D28D9" stroke-width="4" fill="transparent" r="26" cx="30" cy="30" 
+                                stroke-dasharray="163.36" stroke-dashoffset="0"></circle>
+                                <text x="50%" y="50%" text-anchor="middle" stroke="#fff" stroke-width="1px" dy=".3em" font-size="14" font-weight="bold">
+                                    <tspan x="30" y="30" fill="#fff" id="found-objects">0</tspan>
+                                    <tspan x="30" y="45" fill="#aaa" font-size="10">/5</tspan>
+                                </text>
+                            </svg>
+                        </div>
+                        <button id="hidden-obj-hint" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-lightbulb mr-2"></i> Hint
+                        </button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <div id="hidden-obj-image" class="h-96 bg-gray-700 rounded-lg overflow-hidden relative">
+                        <img src="https://images.unsplash.com/photo-1639762681406-56a7d7c1c0ea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" class="game-image">
+                    </div>
+                    <div id="objects-to-find" class="mt-4 flex flex-wrap gap-3 justify-center">
+                        <!-- Objects to find will be listed here -->
+                    </div>
+                </div>
+                <div id="ho-hint-box" class="mt-6 bg-yellow-900 bg-opacity-50 p-4 rounded-lg hidden hint-box">
+                    <div class="flex items-start">
+                        <i class="fas fa-lightbulb text-yellow-300 text-2xl mr-3 mt-1"></i>
+                        <p id="ho-hint-text" class="text-lg"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Screen -->
+            <div id="success-screen" class="hidden text-center py-10 relative">
+                <div class="confetti-container absolute top-0 left-0 right-0 bottom-0 overflow-hidden"></div>
+                <div class="relative z-10">
+                    <div class="w-40 h-40 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-8 flex items-center justify-center shadow-xl">
+                        <i class="fas fa-trophy text-6xl text-white"></i>
+                    </div>
+                    <h2 class="text-4xl font-bold mb-6">Congratulations! 🎉</h2>
+                    <p id="success-message" class="text-xl mb-8">You've successfully completed the puzzle!</p>
+                    <div class="flex flex-col md:flex-row justify-center gap-4">
+                        <button id="play-again-btn" class="btn-primary px-6 py-3 rounded-full text-lg font-bold flex items-center justify-center">
+                            <i class="fas fa-redo mr-2"></i> Play Again
+                        </button>
+                        <button id="new-game-btn" class="bg-purple-700 hover:bg-purple-800 px-6 py-3 rounded-full text-lg font-bold flex items-center justify-center">
+                            <i class="fas fa-plus mr-2"></i> New Game
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <div class="mt-8 text-center">
+                <button id="back-btn" class="bg-gray-700 hover:bg-gray-800 px-6 py-2 rounded-full text-lg hidden">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game state
+            const gameState = {
+                currentScreen: 'welcome-screen',
+                selectedTheme: '',
+                selectedMode: '',
+                difficultyLevel: 1,
+                // Spot the difference state
+                differences: [],
+                foundDifferences: 0,
+                // Tile puzzle state
+                tiles: [],
+                emptyTileIndex: 0,
+                moveCount: 0,
+                gridSize: 3, // 3x3 initially
+                // Hidden object state
+                hiddenObjects: [],
+                foundObjects: 0
+            };
+
+            // Game data by theme
+            const gameData = {
+                fantasy: {
+                    images: {
+                        'spot-difference': [
+                            'https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80',
+                            'https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80'
+                        ],
+                        'tile-puzzle': 'https://images.unsplash.com/photo-1635070040809-4a1030d5b6d6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80',
+                        'hidden-object': 'https://images.unsplash.com/photo-1639762681406-56a7d7c1c0ea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80'
+                    },
+                    'spot-difference': {
+                        differences: [
+                            { x1: 15, y1: 20, x2: 15, y2: 20, radius: 25 },
+                            { x1: 70, y1: 50, x2: 70, y2: 50, radius: 25 },
+                            { x1: 30, y1: 80, x2: 30, y2: 80, radius: 25 },
+                            { x1: 60, y1: 30, x2: 60, y2: 30, radius: 25 },
+                            { x1: 40, y1: 60, x2: 40, y2: 60, radius: 25 }
+                        ],
+                        hints: [
+                            "Look for a magical creature that might have changed color",
+                            "The castle's tower has a subtle difference",
+                            "Check the enchanted forest for changes in the trees",
+                            "Something in the sky doesn't quite match",
+                            "A wizard's staff might be positioned differently"
+                        ]
+                    },
+                    'hidden-object': {
+                        objects: [
+                            { name: "Magic Wand", x: 30, y: 40, width: 40, height: 20 },
+                            { name: "Dragon Egg", x: 60, y: 60, width: 30, height: 30 },
+                            { name: "Crystal Orb", x: 20, y: 70, width: 25, height: 25 },
+                            { name: "Ancient Scroll", x: 70, y: 20, width: 35, height: 15 },
+                            { name: "Fairy Dust", x: 45, y: 30, width: 20, height: 20 }
+                        ],
+                        hints: [
+                            "This magical tool channels a wizard's power",
+                            "Look near the nest for this scaly treasure",
+                            "A sphere that reveals hidden truths",
+                            "Ancient wisdom is written upon it",
+                            "Tiny glowing particles that enable flight"
+                        ]
+                    }
+                },
+                scifi: {
+                    images: {
+                        'spot-difference': [
+                            'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80',
+                            'https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80'
+                        ],
+                        'tile-puzzle': 'https://images.unsplash.com/photo-1635070040809-4a1030d5b6d6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80',
+                        'hidden-object': 'https://images.unsplash.com/photo-1639762681406-56a7d7c1c0ea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80'
+                    },
+                    'spot-difference': {
+                        differences: [
+                            { x1: 20, y1: 30, x2: 20, y2: 30, radius: 25 },
+                            { x1: 50, y1: 40, x2: 50
